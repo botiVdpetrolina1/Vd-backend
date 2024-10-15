@@ -17,6 +17,7 @@ export const getNFeById = async (req: Request, res: Response): Promise<INFe | an
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: "Nota fiscal não encontrada"
             })
+            
         }
 
         return res.status(StatusCodes.OK).json(result)
