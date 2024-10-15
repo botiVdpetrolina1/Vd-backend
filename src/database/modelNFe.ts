@@ -54,7 +54,9 @@ export interface INFe {
       xPed: string | null,
       xProd: string,
     }>;
-    verified: boolean
+    verified: boolean,
+    createdAt: Date,
+    verifiedAt: Date
 }
 
 const nfeSchema: Schema = new Schema<INFe>({
@@ -77,7 +79,9 @@ const nfeSchema: Schema = new Schema<INFe>({
         xProd: { type: String, required: true }
       }
     ],
-    verified: { type: Boolean, required: true }
+    verified: { type: Boolean, required: true },
+    createdAt: { type: Date, required: true },
+    verifiedAt: { type: Date },
 })
 
 

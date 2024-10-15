@@ -56,7 +56,9 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
                         xPed: det.prod[0].xPed?.[0] || null,
                         xProd: det.prod[0].xProd[0],
                     })),
-                    verified: false
+                    verified: false,
+                    createdAt: new Date(),
+                    verifiedAt: new Date()
             };
             const existingNFe = await NFe.findOne({codNFe: json.nfeProc.NFe[0].infNFe[0].$.Id})
 

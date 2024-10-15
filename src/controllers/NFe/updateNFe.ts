@@ -5,13 +5,16 @@ import NFe from "../../database/modelNFe";
 export const updateNFe = async (req: Request, res: Response): Promise<any> => {
   try {
     // Verifique se req.body.data existe
-    if (!req.body.data) {
+    
+    console.log(req.body)
+    
+    if (!req.body) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Data not provided",
       });
     }
 
-    const { verified, codNFe } = req.body.data; // Desestrutura os dados do corpo da requisição
+    const { verified, codNFe } = req.body; // Desestrutura os dados do corpo da requisição
 
     const existingNFe = await NFe.findOne({ codNFe: codNFe }); // Encontra a NFe existente
 
@@ -23,6 +26,7 @@ export const updateNFe = async (req: Request, res: Response): Promise<any> => {
 
     // Atualiza o campo 'verified' da NFe encontrada
     existingNFe.verified = verified; // Atualiza a propriedade 'verified'
+    existingNFe.verifiedAt = new Date(); // Atualiza a propriedade 'verified'
     await existingNFe.save(); // Salva as alterações
 
     return res.status(StatusCodes.OK).json({
