@@ -14,7 +14,7 @@ export const updateNFe = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const { verified, codNFe } = req.body; // Desestrutura os dados do corpo da requisição
+    const { verified, codNFe, table } = req.body; // Desestrutura os dados do corpo da requisição
 
     const existingNFe = await NFe.findOne({ codNFe: codNFe }); // Encontra a NFe existente
 
@@ -27,6 +27,7 @@ export const updateNFe = async (req: Request, res: Response): Promise<any> => {
     // Atualiza o campo 'verified' da NFe encontrada
     existingNFe.verified = verified; // Atualiza a propriedade 'verified'
     existingNFe.verifiedAt = new Date(); // Atualiza a propriedade 'verified'
+    existingNFe.table = table; // Atualiza a propriedade 'verified'
     await existingNFe.save(); // Salva as alterações
 
     return res.status(StatusCodes.OK).json({

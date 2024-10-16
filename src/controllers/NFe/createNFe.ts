@@ -60,7 +60,8 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
                 products, // Utiliza a lista de produtos processada
                 verified: false,
                 createdAt: new Date(),
-                verifiedAt: new Date()
+                verifiedAt: new Date(),
+                table: null
             };
 
             const existingNFe = await NFe.findOne({ codNFe: extractedData.codNFe });

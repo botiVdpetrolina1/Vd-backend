@@ -58,7 +58,8 @@ export interface INFe {
     }>;
     verified: boolean,
     createdAt: Date,
-    verifiedAt: Date
+    verifiedAt: Date,
+    table: number | null
 }
 
 const nfeSchema: Schema = new Schema<INFe>({
@@ -85,6 +86,7 @@ const nfeSchema: Schema = new Schema<INFe>({
     verified: { type: Boolean, required: true },
     createdAt: { type: Date, required: true },
     verifiedAt: { type: Date },
+    table: { type: Number }
 })
 
 
