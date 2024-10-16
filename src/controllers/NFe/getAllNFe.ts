@@ -10,7 +10,7 @@ export const getAllNFe = async (req: Request, res: Response): Promise<INFe | any
     try {
         
 
-        const result = await NFe.find()
+        const result = await NFe.find({})
 
         if (!result) {
             return res.status(StatusCodes.BAD_REQUEST).json({

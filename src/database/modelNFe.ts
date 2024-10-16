@@ -27,6 +27,7 @@ export interface NFeJson {
                       vUnTrib: Array<string>;
                       xPed?: Array<string>;
                       xProd: Array<string>;
+                      qCom: Array<string>;
                   }>;
               }>;
           }>;
@@ -53,6 +54,7 @@ export interface INFe {
       vUnTrib: string,
       xPed: string | null,
       xProd: string,
+      qCom: string 
     }>;
     verified: boolean,
     createdAt: Date,
@@ -76,7 +78,8 @@ const nfeSchema: Schema = new Schema<INFe>({
         vUnCom: { type: String, required: true },
         vUnTrib: { type: String, required: true },
         xPed: { type: String, required: true },
-        xProd: { type: String, required: true }
+        xProd: { type: String, required: true },
+        qCom: { type: String, required: true }
       }
     ],
     verified: { type: Boolean, required: true },
