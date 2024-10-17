@@ -27,7 +27,17 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
             const xmlString = file.buffer.toString();
             const json = await parseXmlToJson(xmlString);
 
-            // Processando os produtos e replicando de acordo com qCom
+            const codNFe = json.nfeProc.NFe[0].infNFe[0].$.Id.replace("NFe", "");
+
+            // Verifique se a NFe já existe antes de processar
+            const existingNFe = await NFe.findOne({ codNFe });
+
+            if (existingNFe) {
+                console.log(`NFe com código ${codNFe} já existe. Ignorando duplicata.`);
+                continue; // Se já existe, ignore e prossiga para o próximo arquivo
+            }
+
+            // Processando os produtos
             const products = json.nfeProc.NFe[0].infNFe[0].det.map(det => {
                 const quantity = parseInt(det.prod[0].qCom[0]); // Obtém a quantidade a partir de qCom
                 const productData = {
@@ -51,8 +61,9 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
                 }));
             }).flat(); // Achata o array de arrays em um único array
 
+            // Prepara os dados da NFe a serem inseridos
             const extractedData: INFe = {
-                codNFe: json.nfeProc.NFe[0].infNFe[0].$.Id.replace("NFe", ""),
+                codNFe: codNFe,
                 version: json.nfeProc.NFe[0].infNFe[0].$.versao,
                 autXML: {
                     cpf: json.nfeProc.NFe[0].infNFe[0].autXML?.[0]?.CPF?.[0] || null,
@@ -64,24 +75,22 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
                 table: null
             };
 
-            const existingNFe = await NFe.findOne({ codNFe: extractedData.codNFe });
-
-            if (!existingNFe) {
-                extractedDataArray.push(extractedData);
-            }
+            extractedDataArray.push(extractedData);
         }
 
-        const result = await NFe.insertMany(extractedDataArray);
-        if (!result) {
+        // Se existirem dados a serem inseridos, realiza a inserção
+        if (extractedDataArray.length > 0) {
+            const result = await NFe.insertMany(extractedDataArray);
+            return res.status(StatusCodes.CREATED).json(result);
+        } else {
             return res.status(StatusCodes.BAD_REQUEST).json({
-                message: "Something went wrong with creation"
+                message: "Nenhuma nova NFe a ser inserida"
             });
         }
-        return res.status(StatusCodes.CREATED).json(extractedDataArray);
     } catch (error) {
         console.log(error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             message: "Something went wrong"
         });
     }
-}
+};

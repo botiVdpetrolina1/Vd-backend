@@ -14,6 +14,7 @@ const upload = multer({
 })
 
 router.get('/get/all', NfeController.getAllNFe)
+router.get('/get/all/verified', NfeController.getNFeById)
 router.get('/get/:id', NfeController.getNFeById)
 router.post('/post', upload.array('xmlFiles'), NfeController.createNFe)
 router.put('/put', NfeController.updateNFe)
