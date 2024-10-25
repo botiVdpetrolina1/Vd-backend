@@ -6,6 +6,7 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import NFeRoute from './routes/NFeRoutes'
+import DealerRoute from './routes/DealerRoutes'
 
 dotenv.config()
 
@@ -27,6 +28,7 @@ app.use(express.json())
 
 
 app.use('/nfe', NFeRoute)
+app.use('/dealer', DealerRoute)
 
 app.get('/', (req, res) => {
     res.send("It's Work")

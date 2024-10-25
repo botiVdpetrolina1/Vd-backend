@@ -27,6 +27,8 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
             const xmlString = file.buffer.toString();
             const json = await parseXmlToJson(xmlString);
 
+            console.log(JSON.stringify(json))
+
             const codNFe = json.nfeProc.NFe[0].infNFe[0].$.Id.replace("NFe", "");
 
             // Verifique se a NFe já existe antes de processar
@@ -64,15 +66,35 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
             // Prepara os dados da NFe a serem inseridos
             const extractedData: INFe = {
                 codNFe: codNFe,
+                emit: {
+                    name: json.nfeProc.NFe[0].infNFe[0].emit[0].xNome[0],
+                    cnpj: json.nfeProc.NFe[0].infNFe[0].emit[0].CNPJ[0],
+                    enderEmit: {
+                        Lgr: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xLgr[0],
+                        nro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].nro[0],
+                        bairro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xBairro[0],
+                        cMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cMun[0],
+                        xMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xMun[0],
+                        uF: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].UF[0],
+                        cep: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].CEP[0],
+                        cPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cPais[0],
+                        xPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xPais[0],
+                        fone: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].fone[0],
+                    },
+                    IE: json.nfeProc.NFe[0].infNFe[0].emit[0].IE[0],
+                    CRT: json.nfeProc.NFe[0].infNFe[0].emit[0].CRT[0],
+                },
+                
                 version: json.nfeProc.NFe[0].infNFe[0].$.versao,
                 autXML: {
                     cpf: json.nfeProc.NFe[0].infNFe[0].autXML?.[0]?.CPF?.[0] || null,
-                },
+                }, 
                 products, // Utiliza a lista de produtos processada
                 verified: false,
                 createdAt: new Date(),
                 verifiedAt: new Date(),
-                table: null
+                table: null,
+                orderCode: Number(json.nfeProc.NFe[0].infNFe[0].det[0].prod[0].xPed)
             };
 
             extractedDataArray.push(extractedData);

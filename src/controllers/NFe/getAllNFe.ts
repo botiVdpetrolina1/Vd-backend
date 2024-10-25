@@ -4,29 +4,45 @@ import NFe, { INFe } from "../../database/modelNFe";
 
 export const getAllNFe = async (req: Request, res: Response): Promise<any> => {
   try {
-    // const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10} = req.query;
 
-    // // Converter os valores de page e limit para números
-    // const pageNumber = Math.max(parseInt(page as string, 10), 1); // Garante que a página seja no mínimo 1
-    // const limitNumber = parseInt(limit as string, 10);
+    const pageNumber = Math.max(parseInt(page as string, 10), 1); // Página sempre será no mínimo 1
+    const limitNumber = parseInt(limit as string, 10);
 
-    // Consulta paginada e ordenada
-    const result = await NFe.find({})
-      .sort({ verifiedAt: -1 })
-    //   .skip((pageNumber - 1) * limitNumber) // Ajuste no cálculo de skip
-    //   .limit(limitNumber);
+    const resultDocumentsVerified = await NFe.find({ verified: true })
+      .sort({ verifiedAt: -1 }) // Ordena pela data de verificação mais recente
+      .skip((pageNumber - 1) * limitNumber) // Pula os itens de páginas anteriores
+      .limit(limitNumber); // Limita o número de itens retornados por página
+      
+    const resultDocumentsNotVerified = await NFe.find({ verified: false })
+      .sort({ verifiedAt: -1 }) // Ordena pela data de verificação mais recente
+      .skip((pageNumber - 1) * limitNumber) // Pula os itens de páginas anteriores
+      .limit(limitNumber); // Limita o número de itens retornados por página
 
     // Se nenhum resultado for encontrado
-    if (!result || result.length === 0) {
+    if (!resultDocumentsVerified || resultDocumentsVerified.length === 0 && !resultDocumentsNotVerified || resultDocumentsNotVerified.length === 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Nenhuma nota encontrada",
       });
     }
 
-    // Total de documentos para calcular as páginas
-    const totalDocuments = await NFe.countDocuments();
+    // Contagem do total de documentos
+    const totalDocumentsVerified = await NFe.countDocuments({ verified: true });
+    const totalDocumentsNotVerified = await NFe.countDocuments({ verified: false });
+    const totalPagesVerified = Math.ceil(totalDocumentsVerified / limitNumber);
+    const totalPagesNotVerified = Math.ceil(totalDocumentsNotVerified / limitNumber);
 
-    return res.status(StatusCodes.OK).json(result);
+    return res.status(StatusCodes.OK).json({
+      totDocVerified: totalDocumentsVerified,
+      totDocNotVerified: totalDocumentsNotVerified,
+      totPagesVerified: totalPagesVerified,
+      totPagesNotVerified: totalPagesNotVerified,
+      currentPage: pageNumber,
+      data: {
+        resVerified: resultDocumentsVerified,
+        resNotVerified: resultDocumentsNotVerified
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
