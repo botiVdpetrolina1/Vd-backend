@@ -6,7 +6,11 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import NFeRoute from './routes/NFeRoutes'
-import DealerRoute from './routes/DealerRoutes'
+import SupervisorRoute from './routes/SupervisorRoutes'
+import TransferRoute from './routes/TransferRoute'
+import UserRoute from './routes/UserRoute'
+
+import { PrismaClient } from '@prisma/client';
 
 dotenv.config()
 
@@ -14,6 +18,8 @@ dotenv.config()
 const URI_MONGO_DB = process.env.URI_MONGO_DB
 
 const app = express()
+
+export const prisma = new PrismaClient()
 
 const corsOptions = {
     origin: "*",
@@ -28,12 +34,13 @@ app.use(express.json())
 
 
 app.use('/nfe', NFeRoute)
-app.use('/dealer', DealerRoute)
+app.use('/user', UserRoute)
+app.use('/supervisor', SupervisorRoute)
+app.use('/transfer', TransferRoute)
 
 app.get('/', (req, res) => {
     res.send("It's Work")
 })
-
 
 mongoose.connect(URI_MONGO_DB as string)
 .then(() => {

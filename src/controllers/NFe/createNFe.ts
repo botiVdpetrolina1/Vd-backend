@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import NFe, { INFe, NFeJson } from "../../database/modelNFe";
 import xml2js from 'xml2js';
+import { prisma } from "../../index";
+import { create } from "domain";
+import { ObjectId } from "mongodb";
 
 const parseXmlToJson = (xmlData: any): Promise<NFeJson> => {
     return new Promise((resolve, reject) => {
@@ -14,34 +17,36 @@ const parseXmlToJson = (xmlData: any): Promise<NFeJson> => {
     });
 }
 
-export const createNFe = async (req: Request, res: Response): Promise<INFe | any> => {
+export const createNFe = async (req: Request, res: Response): Promise<any> => {
     try {
         const xmlFiles = req.files as Express.Multer.File[];
-        const extractedDataArray: INFe[] = [];
 
         if (!xmlFiles || xmlFiles.length === 0) {
             return res.status(StatusCodes.BAD_REQUEST).json({ message: "No files uploaded" });
         }
 
+        const userId = new ObjectId(req.body.userId)
+
         for (const file of xmlFiles) {
             const xmlString = file.buffer.toString();
             const json = await parseXmlToJson(xmlString);
 
-            console.log(JSON.stringify(json))
-
             const codNFe = json.nfeProc.NFe[0].infNFe[0].$.Id.replace("NFe", "");
 
-            // Verifique se a NFe já existe antes de processar
-            const existingNFe = await NFe.findOne({ codNFe });
+            // Verificar se a NFe já existe
+            const existingNFe = await prisma.nFe.findFirst({
+                where: { codNFe },
+            });
 
             if (existingNFe) {
                 console.log(`NFe com código ${codNFe} já existe. Ignorando duplicata.`);
-                continue; // Se já existe, ignore e prossiga para o próximo arquivo
+                continue;
             }
 
-            // Processando os produtos
-            const products = json.nfeProc.NFe[0].infNFe[0].det.map(det => {
-                const quantity = parseInt(det.prod[0].qCom[0]); // Obtém a quantidade a partir de qCom
+
+            // Criar os produtos
+            const productsData = json.nfeProc.NFe[0].infNFe[0].det.map(det => {
+                const quantity = parseInt(det.prod[0].qCom[0]);
                 const productData = {
                     cEAN: det.prod[0].cEAN[0],
                     cEANTrib: det.prod[0].cEANTrib[0],
@@ -53,66 +58,71 @@ export const createNFe = async (req: Request, res: Response): Promise<INFe | any
                     vUnTrib: det.prod[0].vUnTrib[0],
                     xPed: det.prod[0].xPed?.[0] || null,
                     xProd: det.prod[0].xProd[0],
-                    qCom: det.prod[0].qCom[0] // Incluindo qCom aqui
+                    qCom: det.prod[0].qCom[0] 
                 };
 
-                // Replicando o produto conforme a quantidade de qCom
                 return Array.from({ length: quantity }, () => ({
                     ...productData,
-                    verified: false, // Inicializa como não verificado
                 }));
-            }).flat(); // Achata o array de arrays em um único array
+            }).flat();
 
-            // Prepara os dados da NFe a serem inseridos
-            const extractedData: INFe = {
-                codNFe: codNFe,
-                emit: {
-                    name: json.nfeProc.NFe[0].infNFe[0].emit[0].xNome[0],
-                    cnpj: json.nfeProc.NFe[0].infNFe[0].emit[0].CNPJ[0],
-                    enderEmit: {
-                        Lgr: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xLgr[0],
-                        nro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].nro[0],
-                        bairro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xBairro[0],
-                        cMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cMun[0],
-                        xMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xMun[0],
-                        uF: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].UF[0],
-                        cep: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].CEP[0],
-                        cPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cPais[0],
-                        xPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xPais[0],
-                        fone: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].fone[0],
+            const newNFe = await prisma.nFe.create({
+                data: {
+                    codNFe,
+                    version: json.nfeProc.NFe[0].infNFe[0].$.versao,
+                    createdAt: new Date(),
+                    verifiedAt: new Date(),
+                    userId: userId.toString(),
+                    orderCode: Number(json.nfeProc.NFe[0].infNFe[0].det[0].prod[0].xPed),
+
+                    emitName: json.nfeProc.NFe[0].infNFe[0].emit[0].xNome[0],
+                    emitCnpj: json.nfeProc.NFe[0].infNFe[0].emit[0].CNPJ[0],
+                    emitIE: json.nfeProc.NFe[0].infNFe[0].emit[0].IE[0],
+                    emitCRT:json.nfeProc.NFe[0].infNFe[0].emit[0].CRT[0],
+                    enderEmitLgr: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xLgr[0],
+                    enderEmitNro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].nro[0],
+                    enderEmitBairro: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xBairro[0],
+                    enderEmitcMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cMun[0],
+                    enderEmitxMun: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xMun[0],
+                    enderEmitUF: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].UF[0],
+                    enderEmitCep: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].CEP[0],
+                    enderEmitcPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].cPais[0],
+                    enderEmitxPais: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].xPais[0],
+                    enderEmitFone: json.nfeProc.NFe[0].infNFe[0].emit[0].enderEmit[0].fone[0],
+
+                    destCpf: json.nfeProc.NFe[0].infNFe[0].dest[0].CPF?.[0] || null,
+                    destxNome: json.nfeProc.NFe[0].infNFe[0].dest[0].xNome?.[0],
+                    destEmail: json.nfeProc.NFe[0].infNFe[0].dest[0].email?.[0],
+                    destindIEDest: json.nfeProc.NFe[0].infNFe[0].dest[0].indIEDest?.[0],
+                    enderDestLgr: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].xLgr?.[0],
+                    enderDestNro: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].nro?.[0] || null,
+                    enderDestBairro: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].xBairro?.[0],
+                    enderDestcMun: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].cMun?.[0],
+                    enderDestxMun: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].xMun?.[0],
+                    enderDestUF: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].UF?.[0],
+                    enderDestCep: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].CEP?.[0],
+                    enderDestcPais: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].cPais?.[0],
+                    enderDestxPais: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].xPais?.[0],
+                    enderDestFone: json.nfeProc.NFe[0].infNFe[0].dest[0].enderDest[0].fone?.[0],
+                    autXmlCpf: json.nfeProc.NFe[0].infNFe[0].autXML?.[0]?.CPF?.[0] || null,
+
+                    verified: false,
+
+                    products: {
+                        create: productsData,
                     },
-                    IE: json.nfeProc.NFe[0].infNFe[0].emit[0].IE[0],
-                    CRT: json.nfeProc.NFe[0].infNFe[0].emit[0].CRT[0],
+                    
                 },
-                
-                version: json.nfeProc.NFe[0].infNFe[0].$.versao,
-                autXML: {
-                    cpf: json.nfeProc.NFe[0].infNFe[0].autXML?.[0]?.CPF?.[0] || null,
-                }, 
-                products, // Utiliza a lista de produtos processada
-                verified: false,
-                createdAt: new Date(),
-                verifiedAt: new Date(),
-                table: null,
-                orderCode: Number(json.nfeProc.NFe[0].infNFe[0].det[0].prod[0].xPed)
-            };
-
-            extractedDataArray.push(extractedData);
-        }
-
-        // Se existirem dados a serem inseridos, realiza a inserção
-        if (extractedDataArray.length > 0) {
-            const result = await NFe.insertMany(extractedDataArray);
-            return res.status(StatusCodes.CREATED).json(result);
-        } else {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: "Nenhuma nova NFe a ser inserida"
             });
+
+            console.log(`NFe criada com ID: ${newNFe.id}`);
         }
+
+        return res.status(StatusCodes.CREATED).json({ message: "NFes criadas com sucesso!" });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            message: "Something went wrong"
+            message: "Erro ao processar NFes",
         });
     }
 };

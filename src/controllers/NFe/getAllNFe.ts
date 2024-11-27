@@ -1,34 +1,54 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import NFe, { INFe } from "../../database/modelNFe";
+import { prisma } from "../..";
 
 export const getAllNFe = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { page = 1, limit = 10} = req.query;
+    const { page = 1, limit = 10, orderCode = "" } = req.query;
 
-    const pageNumber = Math.max(parseInt(page as string, 10), 1); // Página sempre será no mínimo 1
-    const limitNumber = parseInt(limit as string, 10);
+    const pageNumber = Math.max(parseInt(page as string, 10), 1);
+    const limitNumber = Math.max(parseInt(limit as string, 10) || 10, 1);
 
-    const resultDocumentsVerified = await NFe.find({ verified: true })
-      .sort({ verifiedAt: -1 }) // Ordena pela data de verificação mais recente
-      .skip((pageNumber - 1) * limitNumber) // Pula os itens de páginas anteriores
-      .limit(limitNumber); // Limita o número de itens retornados por página
-      
-    const resultDocumentsNotVerified = await NFe.find({ verified: false })
-      .sort({ verifiedAt: -1 }) // Ordena pela data de verificação mais recente
-      .skip((pageNumber - 1) * limitNumber) // Pula os itens de páginas anteriores
-      .limit(limitNumber); // Limita o número de itens retornados por página
+    // Converte `orderCode` para número se for fornecido
+    const searchCondition =
+    orderCode !== ""
+      ? { orderCode: Number(orderCode) } // Filtro para números
+      : {};
+  
 
-    // Se nenhum resultado for encontrado
-    if (!resultDocumentsVerified || resultDocumentsVerified.length === 0 && !resultDocumentsNotVerified || resultDocumentsNotVerified.length === 0) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Nenhuma nota encontrada",
-      });
-    }
+    const resultDocumentsVerified = await prisma.nFe.findMany({
+      where: {
+        verified: true,
+        ...searchCondition,
+      },
+      orderBy: { verifiedAt: "desc" },
+      skip: (pageNumber - 1) * limitNumber,
+      take: limitNumber,
+      include: {
+        products: true,
+      },
+    });
 
-    // Contagem do total de documentos
-    const totalDocumentsVerified = await NFe.countDocuments({ verified: true });
-    const totalDocumentsNotVerified = await NFe.countDocuments({ verified: false });
+    const resultDocumentsNotVerified = await prisma.nFe.findMany({
+      where: {
+        verified: false,
+        ...searchCondition,
+      },
+      orderBy: { verifiedAt: "desc" },
+      skip: (pageNumber - 1) * limitNumber,
+      take: limitNumber,
+      include: {
+        products: true,
+      },
+    });
+
+    const totalDocumentsVerified = await prisma.nFe.count({
+      where: { verified: true, ...searchCondition },
+    });
+    const totalDocumentsNotVerified = await prisma.nFe.count({
+      where: { verified: false, ...searchCondition },
+    });
+
     const totalPagesVerified = Math.ceil(totalDocumentsVerified / limitNumber);
     const totalPagesNotVerified = Math.ceil(totalDocumentsNotVerified / limitNumber);
 
@@ -40,11 +60,11 @@ export const getAllNFe = async (req: Request, res: Response): Promise<any> => {
       currentPage: pageNumber,
       data: {
         resVerified: resultDocumentsVerified,
-        resNotVerified: resultDocumentsNotVerified
+        resNotVerified: resultDocumentsNotVerified,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao buscar NFe:", error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: "Algo deu errado",
     });

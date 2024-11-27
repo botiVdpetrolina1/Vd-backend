@@ -3,15 +3,19 @@ import mongoose, {Document, Schema} from "mongoose";
 
 
 
-interface IDealer  {
+export interface IDealer  {
     orderCode: number;
-    responsibleStructure: string
+    responsibleStructure: string | null,
+    deliveryForecast: string | null;
+    batch: string
 }
 
 
-const schema: Schema = new mongoose.Schema<IDealer>({
+const schema: Schema = new mongoose.Schema({
     orderCode: { type: Number, required: true },
-    responsibleStructure: { type: String, required: true }
+    responsibleStructure: { type: String, required: false },
+    deliveryForecast: { type: String, required: false },
+    batch: { type: String, required: false },
 })
 
 

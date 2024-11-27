@@ -1,42 +1,61 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import NFe from "../../database/modelNFe";
+import { prisma } from "../..";
 
 export const updateNFe = async (req: Request, res: Response): Promise<any> => {
   try {
-    // Verifique se req.body.data existe
-    
-    console.log(req.body)
-    
+    console.log(req.body);
+
     if (!req.body) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Data not provided",
       });
     }
 
-    const { verified, codNFe, table } = req.body; // Desestrutura os dados do corpo da requisição
+    const { verified, codNFe, table } = req.body;
 
-    const existingNFe = await NFe.findOne({ codNFe: codNFe }); // Encontra a NFe existente
+    // Determina se o codNFe pode ser tratado como número para o campo orderCode
+    const orderCode = !isNaN(Number(codNFe)) && Number(codNFe) <= Number.MAX_SAFE_INTEGER 
+      ? Number(codNFe) 
+      : undefined;
+
+    // Cria as condições de busca dinamicamente
+    const whereConditions: any[] = [{ codNFe: codNFe }];
+    if (orderCode !== undefined) {
+      whereConditions.push({ orderCode });
+    }
+
+    // Busca a NFe existente
+    const existingNFe = await prisma.nFe.findFirst({
+      where: {
+        OR: whereConditions,
+      },
+    });
 
     if (!existingNFe) {
       return res.status(StatusCodes.NOT_FOUND).json({
-        message: "NFe not Found",
+        message: "NFe not found",
       });
     }
 
-    // Atualiza o campo 'verified' da NFe encontrada
-    existingNFe.verified = verified; // Atualiza a propriedade 'verified'
-    existingNFe.verifiedAt = new Date(); // Atualiza a propriedade 'verified'
-    existingNFe.table = table; // Atualiza a propriedade 'verified'
-    await existingNFe.save(); // Salva as alterações
+    const updatedNFe = await prisma.nFe.update({
+      where: { id: existingNFe.id },
+      data: {
+        verified,
+        verifiedAt: new Date(),
+        table,
+      },
+    });
 
     return res.status(StatusCodes.OK).json({
       message: "NFe updated successfully",
+      updatedNFe,
     });
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("Error updating NFe:", error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: "Something went wrong",
+      error: error.message,
     });
   }
 };
