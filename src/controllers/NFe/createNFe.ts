@@ -31,6 +31,11 @@ export const createNFe = async (req: Request, res: Response): Promise<any> => {
             const xmlString = file.buffer.toString();
             const json = await parseXmlToJson(xmlString);
 
+
+            if (!json?.nfeProc?.NFe) {
+                return 
+            }
+
             const codNFe = json.nfeProc.NFe[0].infNFe[0].$.Id.replace("NFe", "");
 
             // Verificar se a NFe já existe

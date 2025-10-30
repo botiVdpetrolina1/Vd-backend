@@ -1,11 +1,11 @@
-
-
-import * as createUser from './createUser'
-
-
-
+import { createUser } from "./createUser";
+import { loginUser } from "./loginUser";
+import { updateCurrentUser } from "./updateMyUser";
+import { getUser } from "./getMyUser";
 
 export const UserController = {
-    ...createUser,
-}
-
+  createUser,
+  loginUser,
+  getUser,
+  updateCurrentUser
+};

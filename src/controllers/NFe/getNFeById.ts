@@ -1,15 +1,9 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { INFe } from "../../database/modelNFe";
 import { prisma } from "../../index";
 
 
-const normalizeCpfCnpj = (value: string | undefined): string | null => {
-  if (!value) return null;
-  return value.replace(/^0+/, ''); // Remove os zeros à esquerda
-};
-
-export const getNFeById = async (req: Request, res: Response): Promise<INFe | any> => {
+export const getNFeById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
@@ -38,13 +32,14 @@ export const getNFeById = async (req: Request, res: Response): Promise<INFe | an
       });
     }
 
-    const normalizedDestCpf = normalizeCpfCnpj(nfe?.destCpf?.toString());
 
     const dealer = await prisma.dealer.findFirst({
       where: {
-        cpf_cnpj: normalizedDestCpf
+        orderCode: nfe?.orderCode
       }
     });
+
+    console.log(dealer)
 
     const result = {
       nfe: nfe,

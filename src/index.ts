@@ -34,7 +34,7 @@ app.use(express.json())
 
 
 app.use('/nfe', NFeRoute)
-app.use('/user', UserRoute)
+app.use('/api/my/user', UserRoute)
 app.use('/supervisor', SupervisorRoute)
 app.use('/transfer', TransferRoute)
 
@@ -51,5 +51,5 @@ mongoose.connect(URI_MONGO_DB as string)
 })
 
 
-app.listen(3000, () => console.log('Server started'))
+app.listen(8080, () => console.log('Server started'))
 

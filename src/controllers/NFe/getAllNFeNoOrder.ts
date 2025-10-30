@@ -4,12 +4,11 @@ import { prisma } from "../..";
 
 export const getAllNFeNoOrder = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { page = 1, limit = 10, orderCode = "", startDate, endDate } = req.query;
+    const { page = 1, limit = 10, orderCode = "", startDate, endDate, status, email, sortField = "verifiedAt", sortDirection = "desc" } = req.query;
 
     const pageNumber = Math.max(parseInt(page as string, 10), 1);
-    const limitNumber = Math.max(parseInt(limit as string, 10) || 10, 1);
+    const limitNumber = Math.max(parseInt(limit as string, 10), 1);
 
-    // Criação da condição de filtro
     const searchCondition: any = {};
 
     if (orderCode) {
@@ -26,10 +25,17 @@ export const getAllNFeNoOrder = async (req: Request, res: Response): Promise<any
       }
     }
 
-    // Query para buscar os documentos
+    if (status) {
+      searchCondition.verified = status === "verificado";
+    }
+
+    if (email) {
+      searchCondition.destEmail = { contains: email as string, mode: "insensitive" };
+    }
+
     const resultDocuments = await prisma.nFe.findMany({
       where: searchCondition,
-      orderBy: { verifiedAt: "desc" },
+      orderBy: { [sortField as string]: sortDirection as string },
       skip: (pageNumber - 1) * limitNumber,
       take: limitNumber,
       include: {
@@ -37,7 +43,6 @@ export const getAllNFeNoOrder = async (req: Request, res: Response): Promise<any
       },
     });
 
-    // Query para contar os documentos totais
     const totalDocuments = await prisma.nFe.count({
       where: searchCondition,
     });

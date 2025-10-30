@@ -1,58 +1,63 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 import { prisma } from "../../index";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { validation } from "../../middleware/validation";
-import * as yup from 'yup'
 
-interface User {
-    email: string;
-    name: string
-}
-
-export const createUserValidation = validation(getSchema =>({
-    body: getSchema<User>(yup.object().shape({
-        email: yup.string().required().email().min(5),
-        name: yup.string().required().min(1),
-        password: yup.string().required().min(5),
-    }))
-}));
-
-export const createUser = async (req: Request, res: Response): Promise<User | any> => {
-  
-  const { name, email, password } = req.body;
+export const createUser = async (req: Request, res: Response): Promise<any> => {
+  const { name, email, password, username } = req.body;
 
   try {
-
-    if (!email || !password) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Email ou senha inválidos' });
+    if (!email || !password || !name || !username) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: "All fields are required",
+      });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: {
-      email: email
-    } })
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email }, { username }] },
+    });
 
     if (existingUser) {
       return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Usuário ja existe"
-      })
+        message: "Email or username already exists",
+      });
     }
 
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: 'USER',
+        username,
+        role: "USER",
+        createdAt: new Date(),
       },
     });
 
-    return res.status(StatusCodes.CREATED).json({ message: 'User registered successfully', newUser });
-  } catch (error) {
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error creating user', error });
+    const token = jwt.sign(
+      { id: newUser.id, email: newUser.email, role: newUser.role },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "1h" }
+    );
+
+    return res.status(StatusCodes.CREATED).json({
+      message: "User successfully registered",
+      token,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        username: newUser.username,
+        role: newUser.role,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error creating user:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "Error creating user",
+      error: error.message,
+    });
   }
-}
+};
